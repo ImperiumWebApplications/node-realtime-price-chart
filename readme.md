@@ -20,13 +20,13 @@ Before you begin, ensure you have met the following requirements:
 1. Clone the repository:
 
    ```
-   git clone https://github.com/yourusername/node-realtime-price-chart.git
+   git clone [https://github.com/yourusername/node-realtime-price-chart.git](https://github.com/ImperiumWebApplications/node-realtime-price-chart.git)
    ```
 
 2. Navigate to the project directory:
 
    ```
-   cd btc-usd-live-chart
+   cd node-realtime-price-chart
    ```
 
 3. Install the dependencies:
