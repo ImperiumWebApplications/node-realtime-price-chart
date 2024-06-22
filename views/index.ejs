@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC/USD Live Price with Real-Time Line Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        #price-container {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        #chart-container {
+            width: 80%;
+            max-width: 800px;
+        }
+    </style>
+</head>
+<body>
+    <div id="price-container">
+        BTC/USD: <span id="price"><%= price %></span>
+    </div>
+    <div id="chart-container">
+        <canvas id="priceChart"></canvas>
+    </div>
+    <script>
+        const ws = new WebSocket('ws://' + location.host);
+        const priceElement = document.getElementById('price');
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        
+        const maxDataPoints = 300; // 5 minutes at 1 update per second
+    
+        let priceData = [];
+    
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'BTC/USD Price',
+                    data: priceData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    borderWidth: 1,
+                    pointRadius: 0, // Hide points for smoother line
+                    fill: false,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second',
+                            displayFormats: {
+                                second: 'HH:mm:ss'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        },
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true,
+                            autoSkipPadding: 15
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Price (USD)'
+                        }
+                    }
+                },
+                animation: {
+                    duration: 0 // Disable animations for smoother updates
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+                                }
+                                return label;
+                            },
+                            title: function(tooltipItems) {
+                                return luxon.DateTime.fromMillis(tooltipItems[0].parsed.x).toFormat('yyyy-MM-dd HH:mm:ss');
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
+            }
+        });
+    
+        const updateChart = (price, timestamp) => {
+            const dateTime = luxon.DateTime.fromMillis(timestamp);
+            
+            priceData.push({x: dateTime, y: parseFloat(price)});
+            
+            if (priceData.length > maxDataPoints) {
+                priceData.shift();
+            }
+    
+            chart.data.datasets[0].data = priceData;
+            chart.update('none');
+        };
+    
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            priceElement.textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(parseFloat(data.price));
+            updateChart(data.price, new Date(data.timestamp).getTime());
+        };
+    </script>
+</body>
+</html>
